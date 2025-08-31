@@ -1,10 +1,11 @@
 # Update the paths
 model:
-  path: cmots/UniSS
+  path: pretrained_models/UniSS
 
 
-# Changing the infer parameters may reduce performance.
+# Changing the infer parameters may reduce performance. 
+# Higher temperature and higher repetition_penalty may fix the wierd output audio.
 infer_param:
-  temperature: 0.8
+  temperature: 0.7
   top_p: 0.8
   repetition_penalty: 1.1

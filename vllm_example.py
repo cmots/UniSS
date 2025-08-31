@@ -61,8 +61,8 @@ def uniss_infer(inputs, vllm_model, speech_tokenizer, samples, output_wav_dir, t
         
         result = {
             "index": sample['index'],
-            "infer_text": translation,
             "transcription": transcription,
+            "translation": translation,
             "source_path": sample['source_path'],
             "infer_wav": output_wav_path,
             "tgt_lang": tgt_lang,
@@ -77,7 +77,7 @@ def main(args, config):
     device = "cuda:0"
 
     # load the model
-    uniss_path = config['model']['path'] + '/uniss'
+    uniss_path = config['model']['path']
     vllm_model = init_vllm_model(uniss_path, uniss_path, tp=1, gpu_memory_utilization=0.8)     # change tp and gpu_memory_utilization as needed
     vllm_model.get_tokenizer().chat_template = None
 
@@ -112,7 +112,7 @@ def main(args, config):
     for idx, sample in enumerate(samples):
         tgt_lang = "<|eng|>" if args.target_language == "en" else "<|cmn|>"
         
-        linguistic_token_ids, speaker_token_ids = speech_tokenizer.tokenize(sample['source_path'], device)
+        linguistic_token_ids, speaker_token_ids = speech_tokenizer.tokenize(sample['source_path'])
         input_text = process_input(linguistic_token_ids, speaker_token_ids, args.task, tgt_lang)
         inputs.append(input_text)
 

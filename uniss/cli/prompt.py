@@ -1,6 +1,5 @@
 import re
 import torch
-from uniss import UniSSTokenizer
 
 '''
 Although we support many tasks, note out weight is optimized for TTS quality and performance modes.

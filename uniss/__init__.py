@@ -33,6 +33,3 @@ Example usage:
 
 from .tokenizer import UniSSTokenizer
 from .cli import process_input, process_output, process_output_vllm
-
-__version__ = "0.1.0"
-__all__ = ["UniSSTokenizer", "process_input", "process_output", "process_output_vllm"]

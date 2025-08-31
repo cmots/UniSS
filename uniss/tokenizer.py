@@ -10,6 +10,7 @@ import torch
 from pathlib import Path
 from typing import Union, Tuple, Optional
 import numpy as np
+import os
 
 from .speech_tokenizer.glm4.glm4_tokenizer import Glm4Tokenizer
 from .speech_tokenizer.bicodec.bicodec_tokenizer import BiCodecTokenizer
@@ -46,17 +47,19 @@ class UniSSTokenizer:
     def from_pretrained(
         cls,
         model_path: Union[str, Path],
-        device: Optional[Union[str, torch.device]] = None
+        device: Optional[Union[str, torch.device]] = None,
     ):
         """
-        Create UniSSTokenizer from a unified model path.
+        Create UniSSTokenizer from a unified model path or HuggingFace repository.
         
         Args:
-            model_path: Path to the unified UniSS model directory containing:
+            model_path: Path to the unified UniSS model directory or HuggingFace repository URL
+                       containing:
                        - uniss/ (main model)
                        - glm4_tokenizer/ (GLM4 tokenizer)
                        - bicodec/ (BiCodec tokenizer)
             device: Device to use ("auto", "cuda", "cpu", or torch.device)
+            cache_dir: Directory to cache downloaded models (default: ~/.cache/huggingface/hub)
         
         Returns:
             UniSSTokenizer instance
@@ -66,26 +69,23 @@ class UniSSTokenizer:
         elif isinstance(device, str):
             device = torch.device(device)
         
-        model_path = Path(model_path)
+        glm4_path = os.path.join(model_path, "glm4_tokenizer")
+        bicodec_path = os.path.join(model_path, "bicodec")
         
-        # Auto-detect paths within the unified directory
-        glm4_path = model_path / "glm4_tokenizer"
-        bicodec_path = model_path / "bicodec"
-        
-        if not glm4_path.exists():
+        if not os.path.exists(glm4_path):
             raise ValueError(f"GLM4 tokenizer not found at {glm4_path}")
-        if not bicodec_path.exists():
+        if not os.path.exists(bicodec_path):
             raise ValueError(f"BiCodec tokenizer not found at {bicodec_path}")
         
         print(f"Loading GLM4 tokenizer from: {glm4_path}")
         glm4_tokenizer = Glm4Tokenizer(
-            model_dir=str(glm4_path),
+            tokenizer_path=glm4_path,
             device=device
         )
         
         print(f"Loading BiCodec tokenizer from: {bicodec_path}")
         bicodec_tokenizer = BiCodecTokenizer(
-            model_dir=str(bicodec_path),
+            model_dir=bicodec_path,
             device=device
         )
         
@@ -116,13 +116,13 @@ class UniSSTokenizer:
         
         print(f"Loading GLM4 tokenizer from: {glm4_path}")
         glm4_tokenizer = Glm4Tokenizer(
-            model_dir=str(glm4_path),
+            model_dir=glm4_path,
             device=device
         )
         
         print(f"Loading BiCodec tokenizer from: {bicodec_path}")
         bicodec_tokenizer = BiCodecTokenizer(
-            model_dir=str(bicodec_path),
+            model_dir=bicodec_path,
             device=device
         )
         

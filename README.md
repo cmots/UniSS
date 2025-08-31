@@ -42,14 +42,13 @@ pip install -r requirements.txt
 pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host=mirrors.aliyun.com
 ```
 ### Model Download
-The weight of UniSS is on [HuggingFace](https://huggingface.co/cmots/UniSS). It will be downloaded automatically when you run the code.
+The weight of UniSS is on [HuggingFace](https://huggingface.co/cmots/UniSS). 
 
-If you want to download the model manually, you can download it via python:
-``` python
-from huggingface_hub import snapshot_download
-
-snapshot_download("cmots/UniSS", local_dir="pretrained_models/UniSS")
+You have to download the model manually, you can download it via provided script:
+``` 
+python download_weight.py
 ```
+
 or download via git clone:
 ``` bash
 mkdir -p pretrained_models
@@ -61,7 +60,8 @@ git clone https://huggingface.co/cmots/UniSS pretrained_models/UniSS
 ```
 
 ## Quick Start
-See `infer.py` for an example to translate a single speech audio file.
+See `infer.py` for an example to translate a single speech audio file. You need to set the `model_path` to the path of the model.
+The target language must be set to `<|eng|>` for English output or `<|cmn|>` for Chinese output.
 ```bash
 python infer.py
 ```
@@ -71,6 +71,7 @@ To support efficient inference with vllm, we provide the `vllm_example.py` scrip
 
 0. Install vLLM.
 ```bash
+conda activate uniss
 pip install vllm==0.9.0
 ```
 1. Modify the model path in `configs/uniss.yaml` if needed.
@@ -110,7 +111,7 @@ We synthesize a large-scale English-Chinese S2ST dataset, which contains 44.8k h
 
 
 ## Citation
-
+If you find our paper and code useful in your research, please consider giving a star and citation.
 ```bibtex
 
 ```

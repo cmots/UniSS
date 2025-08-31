@@ -6,3 +6,5 @@ torch==2.7.0
 torchaudio==2.7.0
 transformers==4.53.1
 soundfile==0.12.1
+librosa==0.11.0
+omegaconf==2.3.0
