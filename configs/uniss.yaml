@@ -1,0 +1,10 @@
+# Update the paths
+model:
+  path: cmots/UniSS
+
+
+# Changing the infer parameters may reduce performance.
+infer_param:
+  temperature: 0.8
+  top_p: 0.8
+  repetition_penalty: 1.1
