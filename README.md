@@ -3,13 +3,13 @@
 ## Overview
 UniSS is a unified single-stage speech-to-speech translation (S2ST) framework that achieves high translation fidelity and speech quality, while preserving timbre, emotion, and duration consistency.
 
-<a href="https://arxiv.org/pdf/2503.01710"><img src="https://img.shields.io/badge/Paper-ArXiv-red" alt="paper"></a>
+<a href="https://arxiv.org/"><img src="https://img.shields.io/badge/Paper-ArXiv-red" alt="paper"></a>
 <a href="https://cmots.github.io/uniss.github.io/"><img src="https://img.shields.io/badge/Demo-Page-lightgrey" alt="version"></a>
 <a href="https://huggingface.co/cmots/UniSS"><img src="https://img.shields.io/badge/Hugging%20Face-Model%20Page-yellow" alt="Hugging Face"></a>
-<a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/Platform-linux-lightgrey" alt="version"></a>
+<!-- <a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/Platform-linux-lightgrey" alt="version"></a>
 <a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/Python-3.10+-orange" alt="version"></a>
 <a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/PyTorch-2.7+-brightgreen" alt="python"></a>
-<a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="mit"></a>
+<a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="mit"></a> -->
 
 UniSS has the following features:
 - **High translation fidelity**: UniSS is constructed upon a pre-trained [Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct). It effectively transfers translation capabilities from large language models (LLMs) to the speech domain. 
@@ -72,7 +72,8 @@ To support efficient inference with vllm, we provide the `vllm_example.py` scrip
 0. Install vLLM.
 ```bash
 conda activate uniss
-pip install vllm==0.9.0
+# We tested vllm==0.8.0, and it works well.
+pip install vllm==0.8.0 --no-deps
 ```
 1. Modify the model path in `configs/uniss.yaml` if needed.
 2. Run the example in Quality mode:
