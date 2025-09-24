@@ -4,7 +4,7 @@
 UniSS is a unified single-stage speech-to-speech translation (S2ST) framework that achieves high translation fidelity and speech quality, while preserving timbre, emotion, and duration consistency.
 
 <a href="https://arxiv.org/"><img src="https://img.shields.io/badge/Paper-ArXiv-red" alt="paper"></a>
-<a href="https://cmots.github.io/uniss.github.io/"><img src="https://img.shields.io/badge/Demo-Page-lightgrey" alt="version"></a>
+<a href="https://cmots.github.io/uniss-demo/"><img src="https://img.shields.io/badge/Demo-Page-lightgrey" alt="version"></a>
 <a href="https://huggingface.co/cmots/UniSS"><img src="https://img.shields.io/badge/Hugging%20Face-Model%20Page-yellow" alt="Hugging Face"></a>
 <!-- <a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/Platform-linux-lightgrey" alt="version"></a>
 <a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/Python-3.10+-orange" alt="version"></a>
