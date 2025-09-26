@@ -3,7 +3,7 @@
 ## Overview
 UniSS is a unified single-stage speech-to-speech translation (S2ST) framework that achieves high translation fidelity and speech quality, while preserving timbre, emotion, and duration consistency.
 
-<a href="https://arxiv.org/"><img src="https://img.shields.io/badge/Paper-ArXiv-red" alt="paper"></a>
+<a href="https://arxiv.org/pdf/2509.21144"><img src="https://img.shields.io/badge/Paper-ArXiv-red" alt="paper"></a>
 <a href="https://cmots.github.io/uniss-demo/"><img src="https://img.shields.io/badge/Demo-Page-lightgrey" alt="version"></a>
 <a href="https://huggingface.co/cmots/UniSS"><img src="https://img.shields.io/badge/Hugging%20Face-Model%20Page-yellow" alt="Hugging Face"></a>
 <!-- <a href="https://github.com/cmots/UniSS"><img src="https://img.shields.io/badge/Platform-linux-lightgrey" alt="version"></a>
@@ -114,5 +114,13 @@ We synthesize a large-scale English-Chinese S2ST dataset, which contains 44.8k h
 ## Citation
 If you find our paper and code useful in your research, please consider giving a star and citation.
 ```bibtex
-
+@misc{cheng2025uniss_s2st,
+      title={UniSS: Unified Expressive Speech-to-Speech Translation with Your Voice}, 
+      author={Sitong Cheng and Weizhen Bian and Xinsheng Wang and Ruibin Yuan and Jianyi Chen and Shunshun Yin and Yike Guo and Wei Xue},
+      year={2025},
+      eprint={2509.21144},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2509.21144}, 
+}
 ```
