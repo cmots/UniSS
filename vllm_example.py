@@ -22,6 +22,7 @@ def init_vllm_model(model_path, tokenizer, tp=1, gpu_memory_utilization=0.9):
     Returns:
         model: the VLLM model
     '''
+    print(f"Initializing VLLM model from {model_path} with tp={tp} and gpu_memory_utilization={gpu_memory_utilization}")
     model = LLM(
         model_path, 
         tensor_parallel_size=tp,
@@ -68,44 +69,141 @@ def uniss_infer(inputs, vllm_model, speech_tokenizer, samples, output_wav_dir, t
         # Sort by chunk index
         items.sort(key=lambda x: x['sample']['chunk_index'])
         
-        # Read original audio for background/silence
+        # Get original duration
         try:
-            original_wav, sr = soundfile.read(source_path)
-            if sr != 16000:
-                # Simple resampling if needed, or just assume 16k
-                pass
-            if len(original_wav.shape) > 1:
-                original_wav = original_wav.mean(axis=1)
+            info = soundfile.info(source_path)
+            original_duration_samples = int(info.duration * 16000)
         except Exception as e:
             print(f"Error reading original audio {source_path}: {e}")
             max_end = max(item['sample']['chunk_end'] for item in items)
-            original_wav = np.zeros(int(max_end * 16000))
+            original_duration_samples = int(max_end * 16000)
 
-        final_audio = original_wav.copy()
+        target_len = original_duration_samples
         
-        # Zero out original speech segments
+        # Collect segments
+        segments = []
         for item in items:
-            start = int(item['sample']['chunk_start'] * 16000)
-            end = int(item['sample']['chunk_end'] * 16000)
-            start = max(0, start)
-            end = min(len(final_audio), end)
-            final_audio[start:end] = 0
+            if item['audio'] is not None and len(item['audio']) > 0:
+                segments.append({
+                    'audio': item['audio'],
+                    'orig_start': int(item['sample']['chunk_start'] * 16000),
+                })
+        
+        # 1. Place segments, shifting right to avoid overlap
+        # Ensure at least 0.2s silence at start
+        min_silence_samples = int(0.2 * 16000)
+        
+        current_pos = min_silence_samples
+        placed_segments = []
+        for seg in segments:
+            start = max(seg['orig_start'], current_pos)
+            placed_segments.append({'start': start, 'audio': seg['audio']})
+            current_pos = start + len(seg['audio'])
+            
+        total_len = current_pos
+        
+        # 2. If total length exceeds target (minus end silence), compress
+        # We want at least min_silence_samples at the end too
+        end_limit = max(min_silence_samples, target_len - min_silence_samples)
+        
+        if total_len > end_limit:
+            overflow = total_len - end_limit
+            
+            # Calculate gaps
+            # Gap 0 is the extra space before the first segment (beyond min_silence_samples)
+            gaps = []
+            if placed_segments:
+                first_gap = placed_segments[0]['start'] - min_silence_samples
+                gaps.append(first_gap)
+                
+                prev_end = placed_segments[0]['start'] + len(placed_segments[0]['audio'])
+                for i in range(1, len(placed_segments)):
+                    gap = placed_segments[i]['start'] - prev_end
+                    gaps.append(gap)
+                    prev_end = placed_segments[i]['start'] + len(placed_segments[i]['audio'])
+            
+            total_gap_len = sum(gaps)
+            
+            if total_gap_len >= overflow:
+                # Reduce gaps
+                ratio = (total_gap_len - overflow) / total_gap_len if total_gap_len > 0 else 0
+                
+                current_pos = min_silence_samples
+                if placed_segments:
+                    # Handle first segment
+                    new_first_gap = int(gaps[0] * ratio)
+                    placed_segments[0]['start'] = current_pos + new_first_gap
+                    current_pos = placed_segments[0]['start'] + len(placed_segments[0]['audio'])
+                    
+                    # Handle subsequent segments
+                    for i in range(1, len(placed_segments)):
+                        new_gap = int(gaps[i] * ratio)
+                        placed_segments[i]['start'] = current_pos + new_gap
+                        current_pos = placed_segments[i]['start'] + len(placed_segments[i]['audio'])
+            else:
+                # Remove all gaps and trim audio
+                current_pos = min_silence_samples
+                for seg in placed_segments:
+                    seg['start'] = current_pos
+                    current_pos += len(seg['audio'])
+                
+                overflow = current_pos - end_limit
+                
+                # Trim silence from start/end of segments
+                for seg in placed_segments:
+                    if overflow <= 0: break
+                    
+                    audio = seg['audio']
+                    mask = np.abs(audio) > 0.01
+                    if not np.any(mask):
+                        trim = len(audio)
+                        seg['audio'] = np.array([])
+                        overflow -= trim
+                        continue
+                        
+                    # Trim from end
+                    last_idx = np.where(mask)[0][-1]
+                    silence_at_end = len(audio) - 1 - last_idx
+                    if silence_at_end > 0:
+                        take = min(silence_at_end, overflow)
+                        seg['audio'] = audio[:-take]
+                        overflow -= take
+                        
+                    if overflow <= 0: break
+                    
+                    # Trim from start
+                    first_idx = np.where(mask)[0][0]
+                    silence_at_start = first_idx
+                    if silence_at_start > 0:
+                        take = min(silence_at_start, overflow)
+                        seg['audio'] = seg['audio'][take:]
+                        overflow -= take
+                
+                # Re-layout
+                current_pos = min_silence_samples
+                for seg in placed_segments:
+                    seg['start'] = current_pos
+                    current_pos += len(seg['audio'])
+
+        # 3. Construct final audio
+        final_audio = np.zeros(target_len)
+        for seg in placed_segments:
+            if len(seg['audio']) == 0: continue
+            
+            start = seg['start']
+            end = start + len(seg['audio'])
+            
+            if start >= target_len: break
+            if end > target_len:
+                seg['audio'] = seg['audio'][:target_len - start]
+                end = target_len
+                
+            final_audio[start:end] = seg['audio']
             
         full_transcription = []
         full_translation = []
         
         for item in items:
-            start = int(item['sample']['chunk_start'] * 16000)
-            gen_audio = item['audio']
-            
-            if gen_audio is not None:
-                gen_len = len(gen_audio)
-                if start + gen_len > len(final_audio):
-                    padding = np.zeros(start + gen_len - len(final_audio))
-                    final_audio = np.concatenate([final_audio, padding])
-                
-                final_audio[start:start+gen_len] = gen_audio
-            
             if item['transcription']:
                 full_transcription.append(item['transcription'])
             if item['translation']:
@@ -186,7 +284,7 @@ def main(args, config):
             soundfile.write(temp_wav_path, chunk['audio'], 16000)
             
             linguistic_token_ids, speaker_token_ids = speech_tokenizer.tokenize(temp_wav_path)
-            input_text = process_input(linguistic_token_ids, speaker_token_ids, args.task, tgt_lang)
+            input_text = process_input(linguistic_token_ids, speaker_token_ids, args.task, tgt_lang, speed=1)
             inputs.append(input_text)
             
             new_sample = sample.copy()

@@ -70,7 +70,7 @@ class VADAudioSplitter:
             # 1. If gap is small (< 2.0s) and total duration is within max limit
             # 2. If current segment is too short (< min limit) and merging keeps it within max limit (allow slightly larger gap)
             
-            if (gap < 2.0 and duration <= target_len_max) or \
+            if (gap < 1.0 and duration <= target_len_max) or \
                ((current_segment['end'] - current_segment['start']) < target_len_min and duration <= target_len_max and gap < 5.0):
                 current_segment['end'] = ts['end']
             else:
