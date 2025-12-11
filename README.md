@@ -73,7 +73,7 @@ To support efficient inference with vllm, we provide the `vllm_example.py` scrip
 ```bash
 conda activate uniss
 # We tested vllm==0.8.0, and it works well.
-pip install vllm==0.8.0 --no-deps
+pip install vllm==0.8.0
 ```
 1. Modify the model path in `configs/uniss.yaml` if needed.
 2. Run the example in Quality mode:

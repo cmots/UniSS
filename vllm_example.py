@@ -5,11 +5,13 @@ import soundfile
 import os
 import json
 import argparse
+import numpy as np
+from utils.split_wav import split_wav_file
 from vllm import LLM, SamplingParams
 from uniss.utils.file import load_input_data, load_config
 from uniss import process_input, process_output_vllm
 from uniss import UniSSTokenizer
-        
+
 def init_vllm_model(model_path, tokenizer, tp=1, gpu_memory_utilization=0.9):
     '''
     Initialize the VLLM model.
@@ -47,27 +49,81 @@ def uniss_infer(inputs, vllm_model, speech_tokenizer, samples, output_wav_dir, t
     # infer with vllm
     infer_results = vllm_model.generate(inputs, sampling_params)
 
-    results = []
-
-    # process the results and save
+    # Group results by original source
+    from collections import defaultdict
+    grouped_results = defaultdict(list)
+    
     for infer_result, sample in zip(infer_results, samples):
         audio, translation, transcription = process_output_vllm(infer_result, speech_tokenizer, args.task, device)
         
-        wav_basename = os.path.splitext(os.path.basename(sample['source_path']))[0]
+        grouped_results[sample['original_source_path']].append({
+            'sample': sample,
+            'audio': audio,
+            'translation': translation,
+            'transcription': transcription
+        })
+        
+    # Process each group
+    for source_path, items in grouped_results.items():
+        # Sort by chunk index
+        items.sort(key=lambda x: x['sample']['chunk_index'])
+        
+        # Read original audio for background/silence
+        try:
+            original_wav, sr = soundfile.read(source_path)
+            if sr != 16000:
+                # Simple resampling if needed, or just assume 16k
+                pass
+            if len(original_wav.shape) > 1:
+                original_wav = original_wav.mean(axis=1)
+        except Exception as e:
+            print(f"Error reading original audio {source_path}: {e}")
+            max_end = max(item['sample']['chunk_end'] for item in items)
+            original_wav = np.zeros(int(max_end * 16000))
+
+        final_audio = original_wav.copy()
+        
+        # Zero out original speech segments
+        for item in items:
+            start = int(item['sample']['chunk_start'] * 16000)
+            end = int(item['sample']['chunk_end'] * 16000)
+            start = max(0, start)
+            end = min(len(final_audio), end)
+            final_audio[start:end] = 0
+            
+        full_transcription = []
+        full_translation = []
+        
+        for item in items:
+            start = int(item['sample']['chunk_start'] * 16000)
+            gen_audio = item['audio']
+            
+            if gen_audio is not None:
+                gen_len = len(gen_audio)
+                if start + gen_len > len(final_audio):
+                    padding = np.zeros(start + gen_len - len(final_audio))
+                    final_audio = np.concatenate([final_audio, padding])
+                
+                final_audio[start:start+gen_len] = gen_audio
+            
+            if item['transcription']:
+                full_transcription.append(item['transcription'])
+            if item['translation']:
+                full_translation.append(item['translation'])
+        
+        wav_basename = os.path.splitext(os.path.basename(source_path))[0]
         output_wav_path = os.path.join(output_wav_dir, f"{wav_basename}_{args.task}.wav")
         
-        if audio is not None:
-            soundfile.write(output_wav_path, audio, 16000)
+        if final_audio is not None:
+            soundfile.write(output_wav_path, final_audio, 16000)
         
         result = {
-            "index": sample['index'],
-            "transcription": transcription,
-            "translation": translation,
-            "source_path": sample['source_path'],
+            "transcription": " ".join(full_transcription),
+            "translation": " ".join(full_translation),
+            "source_path": source_path,
             "infer_wav": output_wav_path,
             "tgt_lang": tgt_lang,
         }
-        results.append(result)
         
         with open(os.path.join(output_wav_dir, f"results.jsonl"), "a", encoding="utf-8") as f:
             f.write(json.dumps(result, ensure_ascii=False) + "\n")
@@ -108,15 +164,39 @@ def main(args, config):
     samples = load_input_data(args.input_path)
 
     inputs = []
+    chunked_samples = []
     
     for idx, sample in enumerate(samples):
         tgt_lang = "<|eng|>" if args.target_language == "en" else "<|cmn|>"
         
-        linguistic_token_ids, speaker_token_ids = speech_tokenizer.tokenize(sample['source_path'])
-        input_text = process_input(linguistic_token_ids, speaker_token_ids, args.task, tgt_lang)
-        inputs.append(input_text)
+        # Split audio
+        try:
+            chunks = split_wav_file(sample['source_path'])
+        except Exception as e:
+            print(f"Error splitting {sample['source_path']}: {e}")
+            chunks = []
+            
+        if not chunks:
+            continue
 
-    uniss_infer(inputs, vllm_model, speech_tokenizer, samples, output_wav_root, tgt_lang, device, sampling_params, args)
+        for chunk_idx, chunk in enumerate(chunks):
+            # Save chunk to temp file
+            temp_wav_path = os.path.join(output_wav_root, "temp", f"{idx}_{chunk_idx}.wav")
+            os.makedirs(os.path.dirname(temp_wav_path), exist_ok=True)
+            soundfile.write(temp_wav_path, chunk['audio'], 16000)
+            
+            linguistic_token_ids, speaker_token_ids = speech_tokenizer.tokenize(temp_wav_path)
+            input_text = process_input(linguistic_token_ids, speaker_token_ids, args.task, tgt_lang)
+            inputs.append(input_text)
+            
+            new_sample = sample.copy()
+            new_sample['chunk_index'] = chunk_idx
+            new_sample['chunk_start'] = chunk['start']
+            new_sample['chunk_end'] = chunk['end']
+            new_sample['original_source_path'] = sample['source_path']
+            chunked_samples.append(new_sample)
+
+    uniss_infer(inputs, vllm_model, speech_tokenizer, chunked_samples, output_wav_root, tgt_lang, device, sampling_params, args)
 
 
 if __name__ == "__main__":

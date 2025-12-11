@@ -2,8 +2,8 @@ einops==0.8.1
 einx==0.3.0
 six==1.17.0
 numpy==2.2.6
-torch==2.7.0
-torchaudio==2.7.0
+torch==2.6.0
+torchaudio==2.6.0
 transformers==4.53.1
 soundfile==0.12.1
 librosa==0.11.0

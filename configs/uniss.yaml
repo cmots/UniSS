@@ -4,7 +4,7 @@ model:
 
 
 # Changing the infer parameters may reduce performance. 
-# Higher temperature and higher repetition_penalty may fix the wierd output audio.
+# Lower temperature and higher repetition_penalty may fix the wierd output audio.
 infer_param:
   temperature: 0.7
   top_p: 0.8
