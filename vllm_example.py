@@ -6,6 +6,7 @@ import os
 import json
 import argparse
 import numpy as np
+import librosa
 from utils.split_wav import split_wav_file
 from vllm import LLM, SamplingParams
 from uniss.utils.file import load_input_data, load_config
@@ -269,7 +270,20 @@ def main(args, config):
         
         # Split audio
         try:
-            chunks = split_wav_file(sample['source_path'])
+            if args.no_vad:
+                audio, sr = soundfile.read(sample['source_path'])
+                if len(audio.shape) > 1:
+                    audio = audio.mean(axis=1)
+                if sr != 16000:
+                    audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+                
+                chunks = [{
+                    'audio': audio,
+                    'start': 0.0,
+                    'end': len(audio) / 16000
+                }]
+            else:
+                chunks = split_wav_file(sample['source_path'])
         except Exception as e:
             print(f"Error splitting {sample['source_path']}: {e}")
             chunks = []
@@ -304,6 +318,7 @@ if __name__ == "__main__":
     parser.add_argument("--input_path", "-i", type=str, required=True, help="Path to input data, should be .jsonl, .tsv, or a folder with speech files")
     parser.add_argument("--output_path", "-o", type=str, required=True, help="Path to output folder")
     parser.add_argument("--config_path", "-c", type=str, default='configs/uniss.yaml', help="Path to config file")
+    parser.add_argument("--no_vad", action="store_true", help="Disable VAD splitting")
 
     args = parser.parse_args()
 

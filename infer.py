@@ -19,6 +19,7 @@ model_path = "pretrained_models/UniSS"
 mode = 'Quality'    # 'Quality' or 'Performance'
 # tgt_lang = "<|eng|>"    # for English output
 tgt_lang = "<|cmn|>"  # for Chinese output
+use_vad = True  # Set to False to disable VAD splitting
 
 # 3. load the model, text tokenizer, and speech tokenizer
 model = AutoModelForCausalLM.from_pretrained(model_path, device_map=device)
@@ -41,7 +42,15 @@ except Exception as e:
     exit(1)
 
 # Split audio
-chunks = split_wav_file(wav_path)
+if use_vad:
+    chunks = split_wav_file(wav_path)
+else:
+    chunks = [{
+        'audio': original_wav,
+        'start': 0.0,
+        'end': len(original_wav) / 16000
+    }]
+
 if not chunks:
     print("No chunks found.")
     exit(1)
